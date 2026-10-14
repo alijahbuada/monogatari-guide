@@ -60,14 +60,15 @@ for (const [key, e] of Object.entries(ANIME)) {
   console.log(`${memo[k] ? "✓" : "✗"} ${e.title}${memo[k] ? `  (MAL ${memo[k].id})` : ""}`);
 }
 
-const castFrom = [...new Set(["bake", "nise", "hana", "tsuki", "owari", "owari2", "zoku", "oms"].map((k) => out.anime[k]?.id).filter(Boolean))];
+const namesOf = (c) => [c.mal, ...(c.alt || [])].map(nameKey);
+const castFrom = [...new Set(["bake", "nise", "kizu1", "nekoshiro", "hana", "tsuki", "owari", "owari2", "zoku", "oms"].map((k) => out.anime[k]?.id).filter(Boolean))];
 for (const id of castFrom) {
   if (CHARACTERS.every((c) => out.characters[c.id])) break;
   let data;
   try { ({ data } = await jikan(`/anime/${id}/characters`)); } catch (err) { console.warn("  " + err.message); continue; }
   for (const c of CHARACTERS) {
     if (out.characters[c.id]) continue;
-    const hit = data.find((d) => nameKey(d.character.name) === nameKey(c.mal));
+    const hit = data.find((d) => namesOf(c).includes(nameKey(d.character.name)));
     if (hit) out.characters[c.id] = { id: hit.character.mal_id, img: hit.character.images?.webp?.image_url || hit.character.images?.jpg?.image_url, url: hit.character.url };
   }
 }
@@ -76,11 +77,12 @@ for (const c of CHARACTERS) {
   if (out.characters[c.id]) continue;
   try {
     const { data } = await jikan(`/characters?q=${encodeURIComponent(c.mal.split(",").reverse().join(" ").trim())}&limit=10`);
-    const hit = data.find((d) => nameKey(d.name) === nameKey(c.mal));
+    const hit = data.find((d) => namesOf(c).includes(nameKey(d.name)));
     if (hit) out.characters[c.id] = { id: hit.mal_id, img: hit.images?.webp?.image_url || hit.images?.jpg?.image_url, url: hit.url };
   } catch (err) { console.warn("  " + err.message); }
 }
 for (const c of CHARACTERS) console.log(`${out.characters[c.id] ? "✓" : "✗"} ${c.name}`);
+out.miss = CHARACTERS.filter((c) => !out.characters[c.id]).map((c) => c.id); // the page won't keep re-searching these
 
 if (!Object.keys(out.anime).length && !Object.keys(out.characters).length) {
   console.error("\nGot nothing back from Jikan (it may be down or blocking this runner). Leaving data/mal.json unchanged.");
