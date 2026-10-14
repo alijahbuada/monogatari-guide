@@ -6,14 +6,14 @@ A spoiler-safe, Shaft-styled public guide to the Monogatari Series: every watch 
 
 | Section | What it does |
 |---|---|
-| **第一話 The Order** | First-timer / Release / Chronological / Novel orders. Cards reshuffle on switch; click a card to mark everything up to it watched. Runtime meter + "episodes per day → finish date". |
+| **第一話 The Order** | First-timer / Release / Chronological / Novel orders, plus a **Calendar** order: every arc, episode by episode, on Araragi's day-by-day calendar (month pages, colored days, late-August arcs shown as parallel tracks). Click an entry to mark everything up to it watched. Runtime meter + "episodes per day → finish date". |
 | **第二話 The Macro Map** | All 31 Japanese volumes as book spines, story by story: animated, announced, or novel-only, with EN/JP availability. |
 | **第三話 Oddities** | Every major arc and its oddity, sealed until you reach it. Hover shifts to the arc's color. |
 | **第四話 The Cast** | MAL portraits with the Shaft head tilt. Unmet characters are silhouettes; the relationship web fills in with progress. |
 | **第五話 After the Anime** | Exit ramp into Off / Monster / Family Season, with "you are here." |
 | **第六話 Which Oddity Are You?** | Five-question quiz with a copyable result. |
 | **第七話 Questions** | Hanekawa's FAQ and Ōgi's (gated) question corner. |
-| **Spoiler Shield** | Fixed bottom slider. Everything past your point is censored (click a 未 bar to peek). Saved in the browser. |
+| **Spoiler Shield** | Fixed bottom slider. Everything past your point is censored (click a 未 bar to peek). Progress is saved per arc, so switching orders never loses or leaks anything. |
 | Extras | Flash-frame title cards (toggle in the top bar; off by default for reduced-motion users), Shinobu's donut counter, Hachikuji 404 page, and type `araragi` anywhere. |
 
 ## Files
@@ -51,6 +51,7 @@ Everything lives in `js/data.js`:
 - A story gets animated → change its status from `"novel"`/`"next"` to `"anime"` and point it at the anime entry.
 - New anime season → add it to `ANIME` and to each list in `ORDERS`.
 - New novel → add a volume to its season in `SEASONS`.
+- Newly animated arcs also need a `CALENDAR` entry (date, episodes, arc token) so the Calendar order stays complete.
 
 Adaptation status is current as of October 2026 (Karen Ogre announced for winter; Torimonogatari published September 2026).
 
