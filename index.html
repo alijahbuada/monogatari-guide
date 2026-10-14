@@ -20,7 +20,7 @@
     <a class="logo" href="#top">〈<b>物語</b>〉GUIDE</a>
     <nav class="topnav" aria-label="Sections">
       <a href="#order">Order</a><a href="#map">Macro Map</a><a href="#oddities">Oddities</a>
-      <a href="#characters">Characters</a><a href="#after">After the Anime</a><a href="#quiz">Quiz</a><a href="#faq">FAQ</a>
+      <a href="#characters">Characters</a><a href="#after">After the Anime</a><a href="#quiz">Quiz</a><a href="#rankings">Best Girl*</a><a href="#faq">FAQ</a>
     </nav>
     <button class="flash-toggle" id="flashToggle" aria-pressed="true" title="Shaft-style text flashes between sections">FLASH ON</button>
   </header>
@@ -123,9 +123,24 @@
       <div class="wrap"><div class="quiz" id="quizBox"></div></div>
     </section>
 
-    <section class="chapter" id="faq">
-      <div class="titlecard" style="--card-bg:#f4f1ea;--card-fg:#0b0b0b" data-flash="第七話|FAQ|質問">
+    <section class="chapter" id="rankings">
+      <div class="titlecard" style="--card-bg:#e60012;--card-fg:#f4f1ea" data-flash="第七話|BEST GIRL*|一番">
         <div class="ep">第七話</div>
+        <h2>Best Girl*</h2>
+        <p>Tier lists, a top five, and a bracket. Everyone's unlocked here, spoiler shield or not, and you can leave out anyone you like. *Gender is not a factor. Yes, Kaiki counts.</p>
+        <div class="big" aria-hidden="true">推</div>
+      </div>
+      <div class="wrap">
+        <div class="order-tabs" id="rankTabs" role="group" aria-label="Ranking mode"></div>
+        <div id="rankBody"></div>
+        <div id="rankShare" class="rank-share"></div>
+        <div id="rankToast" class="rank-toast" hidden aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="chapter" id="faq">
+      <div class="titlecard" style="--card-bg:#f4f1ea;--card-fg:#0b0b0b" data-flash="第八話|FAQ|質問">
+        <div class="ep">第八話</div>
         <h2>Questions</h2>
         <p>Answered by the class president, and questioned by someone who claims to know nothing.</p>
         <div class="big" aria-hidden="true">問</div>
@@ -161,6 +176,9 @@
     </div>
   </footer>
 
+  <div id="postModal" class="post-modal" hidden></div>
+  <div id="shotMode" class="shot" hidden></div>
+
   <div class="spoilbar" role="region" aria-label="Spoiler shield">
     <div class="lab">SPOILER SHIELD<small>I've watched up through</small></div>
     <div class="spoil-mid">
@@ -173,5 +191,6 @@
   <script src="js/data.js"></script>
   <script src="js/mal.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/rank.js"></script>
 </body>
 </html>

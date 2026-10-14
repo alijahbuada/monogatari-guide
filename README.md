@@ -12,7 +12,8 @@ A spoiler-safe, Shaft-styled public guide to the Monogatari Series: every watch 
 | **第四話 The Cast** | MAL portraits with the Shaft head tilt. Unmet characters are silhouettes; the relationship web fills in with progress. |
 | **第五話 After the Anime** | Exit ramp into Off / Monster / Family Season, with "you are here." |
 | **第六話 Which Oddity Are You?** | Five-question quiz with a copyable result. |
-| **第七話 Questions** | Hanekawa's FAQ and Ōgi's (gated) question corner. |
+| **第七話 Best Girl\*** | Tier list (tap or drag; unranked characters stay out of the post), Best Girl top 5, and a 8/16-character bracket. No spoiler locks here. Kaiki and Meme get reactions. **Save image** makes a 1080×1920 post (MAL photos if the browser allows, name tiles if not); **Screenshot mode** shows a full-screen card with photos and tells people to screenshot it. |
+| **第八話 Questions** | Hanekawa's FAQ and Ōgi's (gated) question corner. |
 | **Spoiler Shield** | Fixed bottom slider. Everything past your point is censored (click a 未 bar to peek). Progress is saved per arc, so switching orders never loses or leaks anything. |
 | Extras | Flash-frame title cards (toggle in the top bar; off by default for reduced-motion users), Shinobu's donut counter, Hachikuji 404 page, and type `araragi` anywhere. |
 
@@ -25,6 +26,7 @@ css/style.css         all styling
 js/data.js            ALL content: orders, volumes, stories, characters, quiz, FAQ
 js/mal.js             MyAnimeList image loader
 js/app.js             interactivity
+js/rank.js            Best Girl* rankings, post images, screenshot mode
 data/mal.json         prebuilt MAL image URLs (generated)
 scripts/fetch-mal.mjs builds data/mal.json from the Jikan API
 .github/workflows/refresh-mal.yml   refreshes data/mal.json monthly
