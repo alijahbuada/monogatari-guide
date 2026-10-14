@@ -6,23 +6,71 @@
   const lightBg = (hex) => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150; };
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---------- state ---------- */
-  const SKEY = "mono-guide-state-v1";
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(SKEY) || "{}"); } catch { return {}; } })();
-  const state = {
-    order: ORDERS[saved.order] ? saved.order : "first",
-    pos: Number.isInteger(saved.pos) ? saved.pos : 0,
-    flash: typeof saved.flash === "boolean" ? saved.flash : !reduced,
-    vol: 1,
-  };
-  const save = () => { try { localStorage.setItem(SKEY, JSON.stringify({ order: state.order, pos: state.pos, flash: state.flash, epd: saved.epd })); } catch {} };
+  /* ---------- progress model ----------
+     Progress is stored as the set of arc "tokens" you've watched (e.g. "crab", "k05", "n-off"),
+     not as a slider position. Every order is a list of "units" (an anime entry, a calendar arc,
+     or a novel stage), and each unit expands to its tokens. This keeps progress intact when you
+     switch between orders that slice the story differently. */
+  const CAL = Object.fromEntries(CALENDAR.map((c) => [c.id, c]));
+  const STAGES = Object.fromEntries(NOVEL_STAGES.map((s) => [s.id, s]));
+  const TOKEN_KEY = {};
+  Object.entries(A).forEach(([k, a]) => a.units.forEach((t) => (TOKEN_KEY[t] ??= k)));
+  const ALL_TOKENS = new Set([...Object.keys(TOKEN_KEY), ...Object.keys(STAGES)]);
 
-  const track = (order = state.order) => [...ORDERS[order].list.filter((k) => !A[k].upcoming), ...NOVEL_STAGES.map((s) => s.id)];
-  const watched = () => new Set(track().slice(0, state.pos));
-  const unlocked = (ids) => { const w = watched(); return [].concat(ids).some((id) => w.has(id)); };
-  const gate = (text, ids) => unlocked(ids) ? esc(text) : `<span class="censor" title="Spoiler. Click to peek." tabindex="0">${esc(text)}</span>`;
-  const gateList = (arr, ids) => unlocked(ids) ? arr.map(esc).join(", ") : `<span class="censor" title="Spoiler. Click to peek." tabindex="0">${arr.map(esc).join(", ")}</span>`;
-  const stageLabel = (id) => (A[id] ? A[id].title : NOVEL_STAGES.find((s) => s.id === id)?.label || id);
+  const units = (order = state.order) => {
+    const o = ORDERS[order];
+    const main = o.calendar ? CALENDAR.map((c) => c.id) : o.list.filter((k) => !A[k].upcoming);
+    return [...main, ...NOVEL_STAGES.map((s) => s.id)];
+  };
+  const mainUnits = (order = state.order) => units(order).filter((u) => !STAGES[u]);
+  const expand = (u) => (CAL[u] ? CAL[u].tok : A[u] ? A[u].units : [u]);
+  const unitMins = (u) => (CAL[u] ? CAL[u].mins : A[u] ? A[u].mins : 0);
+  const unitLabel = (u) => (CAL[u] ? CAL[u].arc : A[u] ? A[u].title : STAGES[u]?.label || u);
+  const tokenTitle = (t) => (STAGES[t] ? STAGES[t].label : A[TOKEN_KEY[t]]?.title || t);
+
+  /* ---------- state + storage ---------- */
+  const SKEY = "mono-guide-state-v2";
+  const OLD_SKEY = "mono-guide-state-v1";
+  const readKey = (k) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v && typeof v === "object" ? v : null; } catch { return null; } };
+  const clampEpd = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.min(40, Math.max(1, n)) : 3; };
+
+  const state = { order: "first", watched: new Set(), flash: !reduced, epd: 3, vol: 1 };
+  (function load() {
+    let saved = readKey(SKEY);
+    if (!saved) {
+      // one-time migration from the old position-based save
+      const old = readKey(OLD_SKEY);
+      if (old) {
+        const order = ORDERS[old.order] && !ORDERS[old.order].calendar ? old.order : "first";
+        const pos = Number.isInteger(old.pos) ? old.pos : 0;
+        saved = { order, watched: units(order).slice(0, Math.max(0, pos)).flatMap(expand), flash: old.flash, epd: old.epd };
+      }
+    }
+    if (!saved) return;
+    if (ORDERS[saved.order]) state.order = saved.order;
+    if (Array.isArray(saved.watched)) state.watched = new Set(saved.watched.filter((t) => ALL_TOKENS.has(t)));
+    if (typeof saved.flash === "boolean") state.flash = saved.flash;
+    state.epd = clampEpd(saved.epd);
+  })();
+  // Every setting is written from `state` in one place, so saving one never drops another.
+  const save = () => { try { localStorage.setItem(SKEY, JSON.stringify({ order: state.order, watched: [...state.watched], flash: state.flash, epd: state.epd })); } catch {} };
+  save();
+
+  const isDone = (u) => expand(u).every((t) => state.watched.has(t));
+  const prefixLen = (order = state.order) => { const us = units(order); let n = 0; while (n < us.length && isDone(us[n])) n++; return n; };
+  const unlocked = (ids) => [].concat(ids).some((t) => state.watched.has(t));
+  function setPrefix(n) {
+    const us = units();
+    n = Math.max(0, Math.min(us.length, n));
+    state.watched = new Set(us.slice(0, n).flatMap(expand));
+    save(); renderAll(false);
+  }
+  // clicking an entry marks everything up to it; clicking the last watched one steps back
+  const toggleUnit = (u) => { const idx = units().indexOf(u) + 1; if (idx > 0) setPrefix(prefixLen() === idx ? idx - 1 : idx); };
+
+  const censor = (text, title = "Spoiler. Click to peek.") => `<span class="censor" title="${esc(title)}" tabindex="0">${text}</span>`;
+  const gate = (text, ids) => unlocked(ids) ? esc(text) : censor(esc(text));
+  const gateList = (arr, ids) => unlocked(ids) ? arr.map(esc).join(", ") : censor(arr.map(esc).join(", "));
 
   /* ---------- images ---------- */
   function imgTag(kind, key, alt) {
@@ -97,32 +145,35 @@
   }
   $("#orderTabs").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b || b.dataset.order === state.order) return;
-    const w = watched();
     const next = b.dataset.order;
-    // keep progress: count the leading entries of the new order that were already watched
-    const t = track(next); let p = 0; while (p < t.length && w.has(t[p])) p++;
-    state.order = next; state.pos = p; save();
+    state.order = next; save(); // progress is stored as arcs, so nothing else changes
     flash([{ t: ORDERS[next].jp, bg: "#e60012", fg: "#f4f1ea", s: ORDERS[next].label.toUpperCase() + " ORDER", ms: 340 }]);
     renderAll(true);
   });
 
   function cardHTML(k, i) {
-    const a = A[k]; const w = watched();
+    const a = A[k]; const done = !a.upcoming && isDone(k);
     const metaBits = [a.year, a.kind, a.eps ? (a.eps === 1 ? `${a.mins} min` : `${a.eps} eps`) : "TBA"];
-    return `<button class="ocard ${w.has(k) ? "watched" : ""} ${a.upcoming ? "upcoming" : ""}" data-key="${k}" ${a.upcoming ? 'aria-disabled="true"' : ""}>
+    const arcsOpen = a.upcoming ? unlocked(["n-off"]) : done;
+    return `<button class="ocard ${done ? "watched" : ""} ${a.upcoming ? "upcoming" : ""}" data-key="${k}" ${a.upcoming ? 'aria-disabled="true"' : ""}>
       <div class="cover" style="--c:${a.color};--tf:${lightBg(a.color) ? "#0b0b0b" : "#f4f1ea"}" data-anime="${k}">
         <div class="tile"><span>${a.kanji}</span></div>${imgTag("anime", k, a.title + " cover")}
         <div class="num">${String(i + 1).padStart(2, "0")}</div>
       </div>
       <h3>${esc(a.title)}</h3>
       <div class="meta">${a.jp} · ${metaBits.join(" · ")}</div>
-      <div class="arcs">${gate(a.arcs.join(" / "), a.upcoming ? ["n-off"] : [k])}</div>
-      <div class="mark-hint">${a.upcoming ? "ANNOUNCED · NOT YET AIRED" : w.has(k) && state.pos === track().indexOf(k) + 1 ? "CLICK TO UNMARK" : "MARK WATCHED UP TO HERE"}</div>
+      <div class="arcs">${arcsOpen ? esc(a.arcs.join(" / ")) : censor(esc(a.arcs.join(" / ")))}</div>
+      <div class="mark-hint">${a.upcoming ? "ANNOUNCED · NOT YET AIRED" : done && prefixLen() === units().indexOf(k) + 1 ? "CLICK TO UNMARK" : "MARK WATCHED UP TO HERE"}</div>
     </button>`;
   }
 
   function renderOrder(animate) {
     const grid = $("#orderGrid");
+    const calView = $("#calendarView");
+    const isCal = !!ORDERS[state.order].calendar;
+    grid.hidden = isCal; calView.hidden = !isCal;
+    if (isCal) { grid.innerHTML = ""; renderCalendar(); return; }
+    calView.innerHTML = "";
     const before = {};
     if (animate && !reduced) grid.querySelectorAll(".ocard").forEach((c) => (before[c.dataset.key] = c.getBoundingClientRect()));
     grid.innerHTML = ORDERS[state.order].list.map(cardHTML).join("");
@@ -139,17 +190,15 @@
   $("#orderGrid").addEventListener("click", (e) => {
     if (e.target.closest(".censor")) return;
     const c = e.target.closest(".ocard"); if (!c || A[c.dataset.key].upcoming) return;
-    const idx = track().indexOf(c.dataset.key) + 1;
-    setPos(state.pos === idx ? idx - 1 : idx);
+    toggleUnit(c.dataset.key);
   });
 
   function renderMeter() {
-    const list = ORDERS[state.order].list.filter((k) => !A[k].upcoming);
-    const w = watched();
-    const total = list.reduce((t, k) => t + A[k].mins, 0);
-    const left = list.filter((k) => !w.has(k)).reduce((t, k) => t + A[k].mins, 0);
-    const per = Math.max(1, parseInt($("#epd")?.value || saved.epd || 3, 10));
-    const days = Math.ceil(left / (per * 24));
+    const list = mainUnits();
+    const total = list.reduce((t, u) => t + unitMins(u), 0);
+    const left = list.filter((u) => !isDone(u)).reduce((t, u) => t + unitMins(u), 0);
+    const per = state.epd;
+    const days = Math.ceil(left / (per * 24)); // ~24 minutes per episode
     const done = new Date(Date.now() + days * 864e5);
     $("#meter").innerHTML = `
       <div><b>${list.length}</b><small>Entries in this order</small></div>
@@ -160,8 +209,116 @@
   }
   $("#meter").addEventListener("change", (e) => {
     if (e.target.id !== "epd") return;
-    saved.epd = e.target.value; try { localStorage.setItem(SKEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(SKEY) || "{}"), epd: e.target.value })); } catch {}
+    state.epd = clampEpd(e.target.value); save();
     renderMeter(); $("#epd").focus();
+  });
+
+  /* ---------- 1b. calendar order ---------- */
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const MON = MONTHS.map((m) => m.slice(0, 3));
+  const MONTH_JP = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+  const YEAR_LABEL = { 1: "Year One · Araragi's third year", 2: "Year Two · graduation and after" };
+  const CAL_SPAN = [[1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8], [1, 9], [1, 10], [1, 11], [1, 12], [2, 1], [2, 2], [2, 3], [2, 4]];
+  const oddColor = Object.fromEntries(ODDITIES.map((o) => [o.arc, o.color]));
+  const calColor = (c) => c.color || oddColor[c.arc] || A[c.key].color;
+  const dayNum = (y, m, d) => Date.UTC(CAL_YEARS[y], m - 1, d) / 864e5;
+  function dateLabel(c) {
+    if (c.after) return "After graduation";
+    if (c.approx) return "≈ " + c.approx[2];
+    const [, m1, d1] = c.s, e = c.e;
+    if (!e) return `${MON[m1 - 1]} ${d1}`;
+    return e[1] === m1 ? `${MON[m1 - 1]} ${d1}–${e[2]}` : `${MON[m1 - 1]} ${d1} – ${MON[e[1] - 1]} ${e[2]}`;
+  }
+  const covers = (c, y, m, d) => {
+    if (!c.s) return false;
+    const n = dayNum(y, m, d), e = c.e || c.s;
+    return n >= dayNum(...c.s) && n <= dayNum(...e);
+  };
+
+  function calRow(c) {
+    const n = CALENDAR.indexOf(c) + 1;
+    const done = isDone(c.id);
+    const open = unlocked(c.tok);
+    const last = done && prefixLen() === units().indexOf(c.id) + 1;
+    return `<li><button class="cal-row ${done ? "done" : ""}" data-unit="${c.id}" title="${last ? "Click to unmark" : "Mark watched up to here"}">
+      <span class="cn" style="--sw:${calColor(c)}">${String(n).padStart(2, "0")}</span>
+      <span class="cd">${dateLabel(c)}</span>
+      <span class="ct"><b>${open ? esc(c.arc) : censor(esc(c.arc))}</b><small>${esc(c.where)}</small>${c.note && open ? `<em>${esc(c.note)}</em>` : ""}</span>
+    </button></li>`;
+  }
+
+  function laneBlock(id, y, m) {
+    const L = CAL_LANES[id];
+    const items = CALENDAR.filter((c) => c.lane === id);
+    const [d0, d1] = L.days;
+    const cols = d1 - d0 + 1;
+    const head = Array.from({ length: cols }, (_, i) => {
+      const wd = new Date(Date.UTC(CAL_YEARS[y], m - 1, d0 + i)).getUTCDay();
+      return `<span class="lh">${d0 + i}<small>${"日月火水木金土"[wd]}</small></span>`;
+    }).join("");
+    const rows = items.map((c, i) => {
+      const a = Math.max(c.s[2], d0) - d0 + 2, b = Math.min((c.e || c.s)[2], d1) - d0 + 3;
+      const col = calColor(c);
+      return `<span class="ll" style="grid-row:${i + 2}">${String(CALENDAR.indexOf(c) + 1).padStart(2, "0")} ${unlocked(c.tok) ? esc(c.arc) : censor(esc(c.arc))}</span>
+        <span class="lb ${isDone(c.id) ? "done" : ""}" style="grid-row:${i + 2};grid-column:${a} / ${b};--lc:${col};--lt:${lightBg(col) ? "#0b0b0b" : "#f4f1ea"}">${dateLabel(c)}</span>`;
+    }).join("");
+    return `<div class="lanes">
+      <div class="lanes-head"><span class="lj">${L.jp}</span><b>${esc(L.title)}</b></div>
+      <p>${esc(L.text)}</p>
+      <div class="lane-grid" style="--cols:${cols}"><span></span>${head}${rows}</div>
+    </div>`;
+  }
+
+  function monthCard(y, m) {
+    const Y = CAL_YEARS[y];
+    const first = new Date(Date.UTC(Y, m - 1, 1)).getUTCDay();
+    const len = new Date(Date.UTC(Y, m, 0)).getUTCDate();
+    const exact = CALENDAR.filter((c) => c.s);
+    let cells = "日月火水木金土".split("").map((d, i) => `<span class="wd ${i === 0 ? "sun" : ""}">${d}</span>`).join("");
+    cells += "<span></span>".repeat(first);
+    for (let d = 1; d <= len; d++) {
+      const on = exact.filter((c) => covers(c, y, m, d));
+      if (!on.length) { cells += `<span class="d">${d}</span>`; continue; }
+      const cols = on.map(calColor);
+      const bg = cols.length === 1 ? cols[0]
+        : `linear-gradient(135deg, ${cols.map((c, i) => `${c} ${(i / cols.length) * 100}% ${((i + 1) / cols.length) * 100}%`).join(", ")})`;
+      const title = on.map((c) => (unlocked(c.tok) ? c.arc : "Spoiler")).join(" + ");
+      const all = on.every((c) => isDone(c.id));
+      cells += `<span class="d on ${on.length > 1 ? "multi" : ""} ${all ? "done" : ""}" style="background:${bg};color:${lightBg(cols[0]) ? "#0b0b0b" : "#f4f1ea"}" title="${esc(title)}">${d}</span>`;
+    }
+    const rows = CALENDAR.filter((c) => (c.s && c.s[0] === y && c.s[1] === m) || (c.approx && c.approx[0] === y && c.approx[1] === m));
+    const lane = Object.keys(CAL_LANES).find((id) => { const c = CALENDAR.find((x) => x.lane === id); return c && c.s[0] === y && c.s[1] === m; });
+    return `<article class="cal-month ${lane ? "has-lanes" : ""}">
+      <header><span class="mk">${MONTH_JP[m - 1]}</span><div><b>${MONTHS[m - 1]}</b><small>${y === 1 ? "Year One" : "Year Two"}</small></div></header>
+      <div class="cal-grid" aria-hidden="true">${cells}</div>
+      ${lane ? laneBlock(lane, y, m) : ""}
+      ${rows.length ? `<ol class="cal-list">${rows.map(calRow).join("")}</ol>` : `<p class="cal-quiet">Nothing on screen this month.</p>`}
+    </article>`;
+  }
+
+  function renderCalendar() {
+    let html = `<div class="cal-legend">
+      <span><i class="lg-on"></i>Colored day = an arc happens</span>
+      <span><i class="lg-multi"></i>Striped = arcs overlap</span>
+      <span><b>≈</b> Month known, exact day isn't</span>
+      <span><b>済</b> Watched</span>
+    </div>
+    <p class="cal-note">Weekdays are laid out so Mother's Day lands on May 14, as it does in the story. Click any arc to mark everything up to it as watched.</p>`;
+    let yr = 0;
+    CAL_SPAN.forEach(([y, m]) => {
+      if (y !== yr) { if (yr) html += `</div>`; yr = y; html += `<h3 class="cal-year"><span>${y === 1 ? "一年目" : "二年目"}</span>${YEAR_LABEL[y]}</h3><div class="cal-months">`; }
+      html += monthCard(y, m);
+    });
+    html += `</div>`;
+    const after = CALENDAR.filter((c) => c.after);
+    html += `<h3 class="cal-year"><span>卒業後</span>After graduation · undated</h3>
+      <article class="cal-month cal-after"><p class="cal-quiet">Off &amp; Monster Season isn't pinned to calendar dates. Most of it takes place after graduation, with two stories set 600 years in the past. Listed in the order it aired.</p>
+      <ol class="cal-list">${after.map(calRow).join("")}</ol></article>`;
+    $("#calendarView").innerHTML = html;
+  }
+  $("#calendarView").addEventListener("click", (e) => {
+    if (e.target.closest(".censor")) return;
+    const r = e.target.closest(".cal-row"); if (r) toggleUnit(r.dataset.unit);
   });
 
   /* ---------- 2. macro map ---------- */
@@ -193,7 +350,7 @@
     const s = SEASONS.find((x) => x.vols.some((v) => v.n === state.vol));
     const v = s.vols.find((x) => x.n === state.vol);
     const where = (st) => st[1] === "anime" ? `IN ${esc(A[st[2]].title.toUpperCase())}` : st[1] === "next" ? "ANIME ANNOUNCED · WINTER" : "NOVEL ONLY";
-    const unlock = (st) => st[1] === "anime" ? [st[2]] : [st[2]];
+    const unlock = (st) => [st[3] || st[2]];
     const d = $("#volDetail");
     d.style.setProperty("--sc", s.color === "#111111" ? "#f4f1ea" : s.color);
     d.innerHTML = `
@@ -211,10 +368,10 @@
   /* ---------- 3. oddities ---------- */
   function renderOdd() {
     $("#oddGrid").innerHTML = ODDITIES.map((o) => {
-      const open = unlocked([o.entry]);
+      const open = unlocked([o.tok]);
       return `<article class="odd ${open ? "" : "locked"}" style="--oc:${o.color};--oinv:${lightBg(o.color) ? "#0b0b0b" : "#f4f1ea"}">
         <div class="k">${open ? o.kanji : "未"}</div>
-        <h3>${gate(o.arc, [o.entry])}</h3>
+        <h3>${gate(o.arc, [o.tok])}</h3>
         <div class="o">${open ? `${esc(o.oddity)} · ${o.jpOdd}` : `Unlocks with ${esc(A[o.entry].title)}`}</div>
         <p>${open ? esc(o.hook) : "Sealed until you get there."}</p>
       </article>`;
@@ -230,7 +387,7 @@
           <div class="tile"><span style="font-size:64px">${met ? esc(c.name[0]) : "?"}</span></div>${imgTag("character", c.id, c.name)}
         </div>
         <h3>${met ? esc(c.name) : "???"}</h3>
-        <div class="odd-line">${met ? gate(c.odd, c.oddUnlock) : "Not met yet · " + esc(A[c.meet[0]].title)}</div>
+        <div class="odd-line">${met ? gate(c.odd, c.oddUnlock) : "Not met yet · " + esc(tokenTitle(c.meet[0]))}</div>
         <p>${met ? esc(c.blurb) : ""}</p>
       </button>`;
     }).join("");
@@ -283,15 +440,16 @@
 
   /* ---------- 5. after the anime ---------- */
   function renderAfter() {
-    const w = watched();
-    const animeList = ORDERS[state.order].list.filter((k) => !A[k].upcoming);
-    const seenN = animeList.filter((k) => w.has(k)).length;
-    const nextK = animeList.find((k) => !w.has(k));
+    const w = state.watched;
+    const animeList = mainUnits();
+    const seenN = animeList.filter(isDone).length;
+    const nextK = animeList.find((u) => !isDone(u));
+    const nextLabel = nextK ? (CAL[nextK] ? `${CAL[nextK].arc} (${CAL[nextK].where})` : unitLabel(nextK)) : "";
     const novelOnly = (sid) => SEASONS.find((s) => s.id === sid).vols.flatMap((v) => v.stories.filter((st) => st[1] === "novel").map((st) => st[0]));
 
     let you;
-    if (state.pos === 0) you = `Haven't started? Start with <b>Bakemonogatari</b>. Then set your progress in the bar below as you go.`;
-    else if (nextK) you = `You've watched <b>${seenN} of ${animeList.length}</b> entries in ${ORDERS[state.order].label.toLowerCase()} order. Next up: <b>${esc(A[nextK].title)}</b>.`;
+    if (w.size === 0) you = `Haven't started? In this order you'd start with <b>${esc(unitLabel(animeList[0]))}</b>. Then set your progress in the bar below as you go.`;
+    else if (nextK) you = `You've watched <b>${seenN} of ${animeList.length}</b> entries in ${ORDERS[state.order].label.toLowerCase()} order. Next up: <b>${esc(nextLabel)}</b>.`;
     else if (!w.has("n-off")) you = `You've seen <b>all the anime</b> that exists. From here, the story continues in the novels.`;
     else you = `You're past the anime and into the books. ${w.has("n-family") ? "You're fully caught up. Torimonogatari (Sept 2026) is the newest." : "Keep going."}`;
     $("#youAre").innerHTML = you;
@@ -299,7 +457,7 @@
     const allAnime = !nextK;
     const cards = [
       { step: "STEP 01", title: "Finish the anime", lang: "STREAMING", now: !allAnime,
-        body: `Through Off &amp; Monster Season (2024). ${nextK ? `You're on <b>${esc(A[nextK].title)}</b>.` : "Done!"}` },
+        body: `Through Off &amp; Monster Season (2024). ${nextK ? `You're on <b>${esc(nextLabel)}</b>.` : "Done!"}` },
       { step: "STEP 02", title: "Karen Ogre", lang: "ANIME · WINTER", now: allAnime && !w.has("n-off"),
         body: "The next anime arc, from Wazamonogatari, is announced for winter. Karen goes on a mountain retreat to push herself further." },
       { step: "STEP 03", title: "Off Season novels", lang: "JAPANESE ONLY", now: allAnime && !w.has("n-off"),
@@ -350,18 +508,21 @@
     $("#faqList").innerHTML = FAQ.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("");
   }
   function renderOugi() {
-    $("#ougiList").innerHTML = OUGI.map((o) => `<li>${unlocked(o.unlock) ? esc(o.q) : `<span class="censor" tabindex="0" title="Unlocks with ${esc(stageLabel(o.unlock[0]))}">${esc(o.q)}</span> <small style="font-family:var(--gothic);color:#6b665e">· after ${esc(stageLabel(o.unlock[0]))}</small>`}</li>`).join("");
+    $("#ougiList").innerHTML = OUGI.map((o) => `<li>${unlocked(o.unlock) ? esc(o.q) : `${censor(esc(o.q), "Unlocks with " + tokenTitle(o.unlock[0]))} <small style="font-family:var(--gothic);color:#6b665e">· after ${esc(tokenTitle(o.unlock[0]))}</small>`}</li>`).join("");
   }
 
   /* ---------- footer: Shinobu's donuts ---------- */
   const SHINOBU = ["Kakaka!", "Mister Donut, and be quick about it.", "A Golden Chocolate, if you please.", "Is that all? Watch more.", "Hmph. Adequate."];
   let donutClicks = 0;
   function renderDonuts() {
-    const list = ORDERS[state.order].list.filter((k) => !A[k].upcoming);
-    const w = watched();
-    const eaten = list.filter((k) => w.has(k)).length;
-    $("#donuts").innerHTML = list.map((k, i) => `<button class="donut ${i < eaten ? "eaten" : ""}" aria-label="Donut ${i + 1}${i < eaten ? ", eaten" : ""}"></button>`).join("");
-    if (eaten === list.length) $("#shinobuSays").textContent = "Kakaka! Every last one. Now go read the books.";
+    const list = mainUnits();
+    const ate = list.map(isDone);
+    const eaten = ate.filter(Boolean).length;
+    $("#donuts").innerHTML = list.map((u, i) => `<button class="donut ${ate[i] ? "eaten" : ""}" aria-label="Donut ${i + 1}${ate[i] ? ", eaten" : ""}"></button>`).join("");
+    const says = $("#shinobuSays");
+    if (eaten === list.length) says.textContent = "Kakaka! Every last one. Now go read the books.";
+    else if (says.dataset.full) says.textContent = "";
+    says.dataset.full = eaten === list.length ? "1" : "";
   }
   $("#donuts").addEventListener("click", (e) => {
     if (!e.target.closest(".donut")) return;
@@ -372,17 +533,18 @@
   /* ---------- spoiler bar ---------- */
   const range = $("#spoilRange");
   function renderSpoil() {
-    const t = track();
-    range.max = t.length; range.value = state.pos;
-    $("#spoilNow").textContent = state.pos === 0 ? "Nothing yet. Everything is sealed." : stageLabel(t[state.pos - 1]);
-    $("#spoilMinus").disabled = state.pos === 0; $("#spoilPlus").disabled = state.pos === t.length;
+    const us = units();
+    const n = prefixLen();
+    // arcs marked beyond the slider point (e.g. watched in a different order's sequence)
+    const extra = us.slice(n).filter((u) => expand(u).some((t) => state.watched.has(t))).length;
+    range.max = us.length; range.value = n;
+    const label = n === 0 ? (extra ? "Nothing in this order's sequence yet" : "Nothing yet. Everything is sealed.") : (CAL[us[n - 1]] ? `${CAL[us[n - 1]].arc} · ${dateLabel(CAL[us[n - 1]])}` : unitLabel(us[n - 1]));
+    $("#spoilNow").innerHTML = esc(label) + (extra ? ` <small class="spoil-extra">+ ${extra} more marked out of sequence</small>` : "");
+    $("#spoilMinus").disabled = n === 0; $("#spoilPlus").disabled = n === us.length;
   }
-  function setPos(p) {
-    state.pos = Math.max(0, Math.min(track().length, p)); save(); renderAll(false);
-  }
-  range.addEventListener("input", () => setPos(+range.value));
-  $("#spoilMinus").addEventListener("click", () => setPos(state.pos - 1));
-  $("#spoilPlus").addEventListener("click", () => setPos(state.pos + 1));
+  range.addEventListener("input", () => setPrefix(+range.value));
+  $("#spoilMinus").addEventListener("click", () => setPrefix(prefixLen() - 1));
+  $("#spoilPlus").addEventListener("click", () => setPrefix(prefixLen() + 1));
 
   /* peek at a censored title */
   document.addEventListener("click", (e) => { const c = e.target.closest(".censor"); if (c) { e.stopPropagation(); c.classList.toggle("peek"); } }, true);
@@ -408,7 +570,8 @@
   MAL.init();
 
   /* intro title cards, once per visit */
-  if (state.flash && !sessionStorage.getItem("mono-intro")) {
+  const introSeen = (() => { try { return !!sessionStorage.getItem("mono-intro"); } catch { return true; } })();
+  if (state.flash && !introSeen) {
     try { sessionStorage.setItem("mono-intro", "1"); } catch {}
     flash([
       { t: "〈物語〉", bg: "#0b0b0b", fg: "#f4f1ea", ms: 520 },
