@@ -223,42 +223,62 @@ window.ODDITIES = [
 
 /* ---------- Characters ----------
    mal: name as MyAnimeList lists it (Last, First), used to find the portrait.
-   meet: any of these arc tokens reveals the character. odd: oddity, revealed with oddUnlock. */
+   meet: any of these arc tokens reveals the character. odd: oddity, revealed with oddUnlock.
+   k: glyph for name tiles. short: display name on tiles (defaults to the first name). alt: other MAL spellings. */
 window.CHARACTERS = [
-  { id: "koyomi",  name: "Koyomi Araragi",     mal: "Araragi, Koyomi",     meet: ["crab","vamp1"], odd: "Vampire (mostly ex-)", oddUnlock: ["crab","vamp1"],
+  { id: "koyomi", k: "暦",  name: "Koyomi Araragi", short: "Araragi",     mal: "Araragi, Koyomi",     meet: ["crab","vamp1"], odd: "Vampire (mostly ex-)", oddUnlock: ["crab","vamp1"],
     blurb: "Third-year, narrator, and a boy who cannot stop helping people. A little bit of a vampire.", color: "#e60012" },
-  { id: "hitagi",  name: "Hitagi Senjōgahara", mal: "Senjougahara, Hitagi", meet: ["crab"], odd: "Heavy Stone Crab", oddUnlock: ["crab"],
+  { id: "hitagi", k: "戦",  name: "Hitagi Senjōgahara", mal: "Senjougahara, Hitagi", meet: ["crab"], odd: "Heavy Stone Crab", oddUnlock: ["crab"],
     blurb: "The sickly girl at the back of class. Carries stationery like a weapon, and uses it like one.", color: "#7b2d8e" },
-  { id: "tsubasa", name: "Tsubasa Hanekawa",   mal: "Hanekawa, Tsubasa",   meet: ["crab","vamp1"], odd: "Sawari Neko", oddUnlock: ["cat","family"],
+  { id: "tsubasa", k: "翼", name: "Tsubasa Hanekawa",   mal: "Hanekawa, Tsubasa",   meet: ["crab","vamp1"], odd: "Sawari Neko", oddUnlock: ["cat","family"],
     blurb: "Class president among class presidents. She doesn't know everything, only what she knows.", color: "#d9d4c7" },
-  { id: "mayoi",   name: "Mayoi Hachikuji",    mal: "Hachikuji, Mayoi",    meet: ["snail"], odd: "Lost Cow", oddUnlock: ["snail"],
+  { id: "mayoi", k: "迷",   name: "Mayoi Hachikuji",    mal: "Hachikuji, Mayoi",    meet: ["snail"], odd: "Lost Cow", oddUnlock: ["snail"],
     blurb: "A fifth-grader with an enormous backpack who has been lost for a while. Will bite. Will misname you.", color: "#e8a33d" },
-  { id: "suruga",  name: "Suruga Kanbaru",     mal: "Kanbaru, Suruga",     meet: ["monkey"], odd: "Rainy Devil", oddUnlock: ["monkey"],
+  { id: "suruga", k: "駿",  name: "Suruga Kanbaru",     mal: "Kanbaru, Suruga",     meet: ["monkey"], odd: "Rainy Devil", oddUnlock: ["monkey"],
     blurb: "Basketball star, Hitagi's junior, keeps her left arm wrapped. Very loud, very forward.", color: "#4b6b8a" },
-  { id: "nadeko",  name: "Nadeko Sengoku",     mal: "Sengoku, Nadeko",     meet: ["snake"], odd: "Jagirinawa", oddUnlock: ["snake"],
+  { id: "nadeko", k: "撫",  name: "Nadeko Sengoku",     mal: "Sengoku, Nadeko",     meet: ["snake"], odd: "Jagirinawa", oddUnlock: ["snake"],
     blurb: "A shy middle schooler, friend of Araragi's sisters, who hides behind her bangs and her hat.", color: "#e86fa0" },
-  { id: "shinobu", name: "Shinobu Oshino",     mal: "Oshino, Shinobu",     meet: ["crab","vamp1"], odd: "Vampire", oddUnlock: ["crab","vamp1"],
+  { id: "shinobu", k: "忍", name: "Shinobu Oshino",     mal: "Oshino, Shinobu",     meet: ["crab","vamp1"], odd: "Vampire", oddUnlock: ["crab","vamp1"],
     blurb: "A blonde girl who lives in an abandoned cram school and won't speak a word. Loves donuts.", color: "#f2c94c" },
-  { id: "meme",    name: "Meme Oshino",        mal: "Oshino, Meme",        meet: ["crab","vamp1"], odd: "Specialist", oddUnlock: ["crab","vamp1"],
+  { id: "meme", k: "芽",    name: "Meme Oshino",        mal: "Oshino, Meme",        meet: ["crab","vamp1"], odd: "Specialist", oddUnlock: ["crab","vamp1"],
     blurb: "Aloha shirt, no fixed address, expert in oddities. He'll help, but you save yourself.", color: "#3a7d44" },
-  { id: "karen",   name: "Karen Araragi",      mal: "Araragi, Karen",      meet: ["bee"], odd: "Enclosing Fire Bee", oddUnlock: ["bee"],
+  { id: "karen", k: "火",   name: "Karen Araragi",      mal: "Araragi, Karen",      meet: ["bee"], odd: "Enclosing Fire Bee", oddUnlock: ["bee"],
     blurb: "Elder little sister, martial artist, one half of the Fire Sisters of Justice.", color: "#f2b705" },
-  { id: "tsukihi", name: "Tsukihi Araragi",    mal: "Araragi, Tsukihi",    meet: ["bee"], odd: "Shide Bird", oddUnlock: ["phoenix"],
+  { id: "tsukihi", k: "月", name: "Tsukihi Araragi",    mal: "Araragi, Tsukihi",    meet: ["bee"], odd: "Shide Bird", oddUnlock: ["phoenix"],
     blurb: "Younger little sister, the brains of the Fire Sisters, changes hairstyles by the scene.", color: "#ff7a1a" },
-  { id: "kaiki",   name: "Deishū Kaiki",       mal: "Kaiki, Deishuu",      meet: ["bee"], odd: "Con man", oddUnlock: ["bee"],
+  { id: "kaiki", k: "貝",   name: "Deishū Kaiki", short: "Kaiki",       mal: "Kaiki, Deishuu",      meet: ["bee"], odd: "Con man", oddUnlock: ["bee"],
     blurb: "Dressed for a funeral, every day. Says he's a fake. Believes in money.", color: "#2b2b2b" },
-  { id: "yotsugi", name: "Yotsugi Ononoki",    mal: "Ononoki, Yotsugi",    meet: ["phoenix"], odd: "Shikigami", oddUnlock: ["doll"],
+  { id: "yotsugi", k: "余", name: "Yotsugi Ononoki",    mal: "Ononoki, Yotsugi",    meet: ["phoenix"], odd: "Shikigami", oddUnlock: ["doll"],
     blurb: "Expressionless, monotone, makes a peace sign. Hits extremely hard.", color: "#8fb8de" },
-  { id: "kagenui", name: "Yozuru Kagenui",     mal: "Kagenui, Yozuru",     meet: ["phoenix"], odd: "Specialist", oddUnlock: ["phoenix"],
+  { id: "kagenui", k: "影", name: "Yozuru Kagenui", short: "Kagenui",     mal: "Kagenui, Yozuru",     meet: ["phoenix"], odd: "Specialist", oddUnlock: ["phoenix"],
     blurb: "A specialist in immortal oddities who refuses to walk on the ground.", color: "#c2410c" },
-  { id: "rouka",   name: "Rōka Numachi",       mal: "Numachi, Rouka",      meet: ["devil"], odd: "Collector", oddUnlock: ["devil"],
+  { id: "rouka", k: "蠟",   name: "Rōka Numachi",       mal: "Numachi, Rouka",      meet: ["devil"], odd: "Collector", oddUnlock: ["devil"],
     blurb: "Kanbaru's old court rival, back in town and taking on other people's misfortunes.", color: "#2f6fb5" },
-  { id: "ougi",    name: "Ōgi Oshino",         mal: "Oshino, Ougi",        meet: ["formula"], odd: "???", oddUnlock: ["dark"],
+  { id: "ougi", k: "扇",    name: "Ōgi Oshino",         mal: "Oshino, Ougi",        meet: ["formula"], odd: "???", oddUnlock: ["dark"],
     blurb: "A transfer student who smiles too much and insists that you know nothing.", color: "#111111" },
-  { id: "sodachi", name: "Sodachi Oikura",     mal: "Oikura, Sodachi",     meet: ["riddle"], odd: "None", oddUnlock: ["riddle"],
+  { id: "sodachi", k: "育", name: "Sodachi Oikura",     mal: "Oikura, Sodachi",     meet: ["riddle"], odd: "None", oddUnlock: ["riddle"],
     blurb: "A former classmate who hates Araragi with total, mathematical certainty.", color: "#6b7280" },
-  { id: "gaen",    name: "Izuko Gaen",         mal: "Gaen, Izuko",         meet: ["mail"], odd: "Knows everything", oddUnlock: ["mail"],
+  { id: "gaen", k: "臥",    name: "Izuko Gaen", short: "Gaen",         mal: "Gaen, Izuko",         meet: ["mail"], odd: "Knows everything", oddUnlock: ["mail"],
     blurb: "The specialist's specialist. She knows everything, and she'll tell you so.", color: "#a16207" },
+  /* --- extended cast: mainly for the rankings; `web: false` keeps them out of the relationship web --- */
+  { id: "kissshot", k: "血", name: "Kiss-Shot Acerola-Orion Heart-Under-Blade", short: "Kiss-Shot", mal: "Kiss-shot Acerola-orion Heart-under-blade", alt: ["Heart-under-blade, Kiss-shot Acerola-orion", "Acerola-orion Heart-under-blade, Kiss-shot"], meet: ["vamp1"], odd: "Legendary vampire", oddUnlock: ["vamp1"], web: false,
+    blurb: "The iron-blooded, hot-blooded, cold-blooded vampire. Around five hundred years old, give or take.", color: "#c9a227" },
+  { id: "blackhanekawa", k: "黒", name: "Black Hanekawa", mal: "Black Hanekawa", alt: ["Hanekawa, Black"], meet: ["cat","family"], odd: "Sawari Neko", oddUnlock: ["cat","family"], web: false,
+    blurb: "Stress with cat ears and a very short temper, nya.", color: "#e5e7eb" },
+  { id: "episode", k: "十", name: "Episode", mal: "Episode", meet: ["vamp2"], odd: "Half-vampire hunter", oddUnlock: ["vamp2"], web: false,
+    blurb: "A half-vampire vampire hunter with a giant cross and a worse attitude.", color: "#4b5563" },
+  { id: "dramaturgy", k: "劇", name: "Dramaturgy", mal: "Dramaturgy", meet: ["vamp2"], odd: "Vampire hunter", oddUnlock: ["vamp2"], web: false,
+    blurb: "A vampire who hunts vampires. Very tall, very polite, very many swords.", color: "#7c2d12" },
+  { id: "guillotine", k: "断", name: "Guillotinecutter", mal: "Guillotinecutter", alt: ["Guillotine Cutter"], meet: ["vamp2"], odd: "Vampire hunter", oddUnlock: ["vamp2"], web: false,
+    blurb: "A soft-spoken priest who is absolutely not the nice one.", color: "#6b21a8" },
+  { id: "shishirui", k: "屍", name: "Seishirō Shishirui", short: "Shishirui", mal: "Shishirui, Seishirou", meet: ["mail"], odd: "Vampire", oddUnlock: ["mail"], web: false,
+    blurb: "Kiss-Shot's first minion, back after four hundred years with something to say.", color: "#9f1239" },
+  { id: "kuchinawa", k: "蛇", name: "Kuchinawa", mal: "Kuchinawa", meet: ["medusa"], odd: "Snake god", oddUnlock: ["medusa"], web: false,
+    blurb: "A white snake with a lot of opinions and a real talent for persuasion.", color: "#a7f3d0" },
+  { id: "teori", k: "折", name: "Tadatsuru Teori", short: "Teori", mal: "Teori, Tadatsuru", meet: ["doll"], odd: "Specialist", oddUnlock: ["doll"], web: false,
+    blurb: "A specialist with a very serious grudge and a doll problem.", color: "#475569" },
+  { id: "tooe", k: "遠", name: "Tooe Gaen", short: "Tooe", mal: "Gaen, Tooe", alt: ["Kanbaru, Tooe"], meet: ["dark"], odd: "???", oddUnlock: ["dark"], web: false,
+    blurb: "Kanbaru's mother, and Izuko Gaen's older sister. Rumored to be even more unsettling.", color: "#92400e" },
 ];
 
 /* Relationship web edges: [a, b, label, unlock(any of)] */
@@ -287,6 +307,25 @@ window.EDGES = [
   ["gaen","kagenui","same college club",["dark"]],
   ["nadeko","yotsugi","a new duo",["draw"]],
 ];
+
+/* ---------- Rankings: tier list / Best Girl / bracket ---------- */
+window.TIERS = [
+  { id: "god",     kanji: "神", label: "Best Girl*", color: "#e60012" },
+  { id: "genuine", kanji: "本", label: "Genuine",    color: "#f2b705" },
+  { id: "fine",    kanji: "普", label: "Fine",       color: "#f4f1ea" },
+  { id: "fake",    kanji: "偽", label: "Fake",       color: "#5b3fa6" },
+  { id: "oddity",  kanji: "怪", label: "Menace",     color: "#3a7d44" },
+];
+/* Classic 16 bracket, listed as first-round pairs */
+window.BRACKET_CLASSIC = ["hitagi","kaiki", "tsubasa","blackhanekawa", "mayoi","yotsugi", "shinobu","kissshot", "nadeko","sodachi", "suruga","rouka", "karen","tsukihi", "ougi","meme"];
+window.BRACKET_CLASSIC8 = ["hitagi","kaiki", "tsubasa","ougi", "mayoi","nadeko", "shinobu","meme"];
+/* Reactions when someone crowns these characters */
+window.RANK_REACTIONS = {
+  kaiki:   { stamp: "詐欺", title: "FRAUD", line: "\"I'm a fake.\" Deishū Kaiki, accepting your vote anyway." },
+  meme:    { stamp: "元気", title: "GENKI", line: "\"You're so energetic. Did something good happen?\"" },
+  mayoi:   { stamp: "噛", title: "STUTTER", line: "\"Sorry, I stuttered.\" She accepts the crown." },
+  episode: { stamp: "!?", title: "WHAT", line: "Of all the people in this series. Respect." },
+};
 
 /* ---------- Quiz: Which oddity are you? ---------- */
 window.QUIZ = [

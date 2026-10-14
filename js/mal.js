@@ -38,6 +38,7 @@
   // "Araragi, Koyomi" and "Koyomi Araragi" both become "araragi|koyomi"
   const nameKey = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/ou/g, "o").replace(/uu/g, "u").split(/[^a-z]+/).filter(Boolean).sort().join("|");
+  const namesOf = (c) => [c.mal, ...(c.alt || [])].map(nameKey);
   const charPick = (ch) => ({ id: ch.mal_id, img: ch.images?.webp?.image_url || ch.images?.jpg?.image_url, url: ch.url });
 
   async function resolveAnime(entry) {
@@ -67,16 +68,17 @@
     }
     store.set(out);
     // characters: pull casts from a few seasons that together cover the roster
-    const missing = window.CHARACTERS.filter((c) => !out.characters[c.id]);
-    if (missing.length) {
-      const castSources = ["bake", "nise", "hana", "owari", "owari2"].map((k) => out.anime[k]?.id).filter(Boolean);
+    const missed = new Set(have.miss || []); // characters already searched for recently with no result
+    const want = () => window.CHARACTERS.filter((c) => !out.characters[c.id] && !missed.has(c.id));
+    if (want().length) {
+      const castSources = ["bake", "nise", "kizu1", "nekoshiro", "hana", "tsuki", "owari", "owari2", "zoku", "oms"].map((k) => out.anime[k]?.id).filter(Boolean);
       for (const id of [...new Set(castSources)]) {
-        if (!window.CHARACTERS.some((c) => !out.characters[c.id])) break;
+        if (!want().length) break;
         try {
           const { data } = await jikan(`/anime/${id}/characters`);
-          for (const c of window.CHARACTERS) {
-            if (out.characters[c.id]) continue;
-            const hit = data.find((d) => nameKey(d.character.name) === nameKey(c.mal));
+          for (const c of want()) {
+            const keys = namesOf(c);
+            const hit = data.find((d) => keys.includes(nameKey(d.character.name)));
             if (hit) {
               out.characters[c.id] = charPick(hit.character);
               MAL.emit("character", c.id, out.characters[c.id]);
@@ -86,14 +88,16 @@
         } catch {}
       }
       // anyone still missing: search MAL's character index directly
-      for (const c of window.CHARACTERS) {
-        if (out.characters[c.id]) continue;
+      for (const c of want()) {
         try {
           const { data } = await jikan(`/characters?q=${encodeURIComponent(c.mal.split(",").reverse().join(" ").trim())}&limit=10`);
-          const hit = data.find((d) => nameKey(d.name) === nameKey(c.mal));
+          const keys = namesOf(c);
+          const hit = data.find((d) => keys.includes(nameKey(d.name)));
           if (hit) { out.characters[c.id] = charPick(hit); MAL.emit("character", c.id, out.characters[c.id]); }
+          else missed.add(c.id);
         } catch {}
       }
+      out.miss = [...missed];
       store.set(out);
     }
     return out;
@@ -111,11 +115,12 @@
       const merged = {
         anime: { ...(cached?.anime || {}), ...(built?.anime || {}) },
         characters: { ...(cached?.characters || {}), ...(built?.characters || {}) },
+        miss: [...(cached?.miss || []), ...(built?.miss || [])],
       };
       MAL.data = merged;
       for (const [k, v] of Object.entries(merged.anime)) MAL.emit("anime", k, v);
       for (const [k, v] of Object.entries(merged.characters)) MAL.emit("character", k, v);
-      const complete = Object.keys(window.ANIME).every((k) => merged.anime[k]) && window.CHARACTERS.every((c) => merged.characters[c.id]);
+      const complete = Object.keys(window.ANIME).every((k) => merged.anime[k]) && window.CHARACTERS.every((c) => merged.characters[c.id] || merged.miss.includes(c.id));
       if (!complete) loadLive(merged).then((d) => (MAL.data = d)).catch(() => {});
     },
   };

@@ -104,6 +104,7 @@
     step();
   }
   flashEl.addEventListener("click", () => { flashEl.classList.remove("on"); });
+  window.GUIDE = { flash }; // shared with rank.js
 
   const toggle = $("#flashToggle");
   const syncToggle = () => { toggle.setAttribute("aria-pressed", state.flash); toggle.textContent = state.flash ? "FLASH ON" : "FLASH OFF"; };
@@ -384,7 +385,7 @@
       const met = unlocked(c.meet);
       return `<button class="char ${met ? "" : "unmet"}" data-id="${c.id}" aria-label="${met ? esc(c.name) : "Unknown character"}">
         <div class="portrait" style="--c:${c.color};--tf:${lightBg(c.color) ? "#0b0b0b" : "#f4f1ea"}" data-char="${c.id}">
-          <div class="tile"><span style="font-size:64px">${met ? esc(c.name[0]) : "?"}</span></div>${imgTag("character", c.id, c.name)}
+          <div class="tile"><span style="font-size:64px">${met ? esc(c.k || c.name[0]) : "?"}</span></div>${imgTag("character", c.id, c.name)}
         </div>
         <h3>${met ? esc(c.name) : "???"}</h3>
         <div class="odd-line">${met ? gate(c.odd, c.oddUnlock) : "Not met yet · " + esc(tokenTitle(c.meet[0]))}</div>
@@ -397,16 +398,17 @@
   function renderWeb() {
     const svg = $("#web");
     const W = 900, H = 640, cx = W / 2, cy = H / 2;
-    const others = CHARACTERS.filter((c) => c.id !== "koyomi");
+    const WEB = CHARACTERS.filter((c) => c.web !== false);
+    const others = WEB.filter((c) => c.id !== "koyomi");
     const pos = { koyomi: [cx, cy] };
     others.forEach((c, i) => {
       const ang = (i / others.length) * Math.PI * 2 - Math.PI / 2;
       pos[c.id] = [cx + Math.cos(ang) * 255 * 1.25, cy + Math.sin(ang) * 255];
     });
-    const met = new Set(CHARACTERS.filter((c) => unlocked(c.meet)).map((c) => c.id));
+    const met = new Set(WEB.filter((c) => unlocked(c.meet)).map((c) => c.id));
     const edges = EDGES.filter(([a, b, , u]) => met.has(a) && met.has(b) && unlocked(u));
     const R = 30;
-    let out = `<defs>${CHARACTERS.map((c) => `<clipPath id="clip-${c.id}"><circle cx="${pos[c.id][0]}" cy="${pos[c.id][1]}" r="${R}"/></clipPath>`).join("")}</defs>`;
+    let out = `<defs>${WEB.map((c) => `<clipPath id="clip-${c.id}"><circle cx="${pos[c.id][0]}" cy="${pos[c.id][1]}" r="${R}"/></clipPath>`).join("")}</defs>`;
     let hotI = 0;
     out += edges.map(([a, b, label]) => {
       const hot = hotNode && (a === hotNode || b === hotNode);
@@ -417,7 +419,7 @@
       return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${hot ? "hot" : ""}"/>` +
         (hot ? `<text class="edge-label" x="${hx + (ox - hx) * t}" y="${hy + (oy - hy) * t - 6}">${esc(label)}</text>` : "");
     }).join("");
-    out += CHARACTERS.map((c) => {
+    out += WEB.map((c) => {
       const [x, y] = pos[c.id]; const m = met.has(c.id);
       const img = MAL.data.characters[c.id]?.img;
       return `<g class="node ${m ? "" : "unmet"} ${hotNode === c.id ? "hot" : ""}" data-id="${c.id}" tabindex="${m ? 0 : -1}">
