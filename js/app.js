@@ -15,7 +15,7 @@
     flash: typeof saved.flash === "boolean" ? saved.flash : !reduced,
     vol: 1,
   };
-  const save = () => { try { localStorage.setItem(SKEY, JSON.stringify({ order: state.order, pos: state.pos, flash: state.flash })); } catch {} };
+  const save = () => { try { localStorage.setItem(SKEY, JSON.stringify({ order: state.order, pos: state.pos, flash: state.flash, epd: saved.epd })); } catch {} };
 
   const track = (order = state.order) => [...ORDERS[order].list.filter((k) => !A[k].upcoming), ...NOVEL_STAGES.map((s) => s.id)];
   const watched = () => new Set(track().slice(0, state.pos));
